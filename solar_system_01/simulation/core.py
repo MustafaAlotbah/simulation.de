@@ -22,6 +22,12 @@ class Simulation:
         self.dt = dt
         self.time = 0.0
 
+    def get_stats(self):
+        return str(
+            "Stats:\n"
+            f"$t={self.time:.2f}$"
+        )
+
     def simulation_step(self):
         # calculate forces
 

@@ -54,13 +54,21 @@ class Visualization:
         self.ax1.set_yticks(range(self.bounds[2], self.bounds[3]))
         self.ax1.grid(c=self.grid_color, zorder=-10)
 
+        self.stats_text = self.ax1.text(0.02, 0.98, "stats",
+                                        zorder=-100,
+                                        transform=self.ax1.transAxes,
+                                        verticalalignment='top'
+                                        )
+        self.stats_text.set_bbox(dict(facecolor='0.80', alpha=0.3, edgecolor=background_color))
+
         for artist in self.simulation.get_artists():
             self.ax1.add_patch(artist)
 
         def anim_update(_):
             simulation.update_artists()
             simulation.simulation_step()
-            return simulation.get_artists()
+            self.stats_text.set_text(simulation.get_stats())
+            return self.stats_text, *simulation.get_artists()
 
         self.animation = mpl.animation.FuncAnimation(
             fig=self.fig,

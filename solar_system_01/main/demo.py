@@ -30,11 +30,16 @@ if __name__ == "__main__":
 
     ani = Visualization(
         sim,
-        bounds=[-5, 5, -10, 10],
-        simulation_steps=2501,
+        bounds=[-5, 5, -12, 8],
+        simulation_steps=3001,
         background_color='#020203',
         foreground_color='white',
     )
+
     ani.show()
+
+    # import os
+    # num_files = len([name for name in os.listdir('../output') if os.path.isfile('../output/' + name)])
+    # ani.save_video(f'../output/{num_files}.mp4')
 
     print("Done.")
