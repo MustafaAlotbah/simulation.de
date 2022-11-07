@@ -32,20 +32,19 @@ def apply_spring_forces(spring: Spring):
     dl = np.linalg.norm(dx)
 
     # compute the displacement: ||x1 - x2|| - restLength
-    C = dl - spring.rest_length
+    c = dl - spring.rest_length
 
     # determine the gradient
 
     if dl > 0.001:
-        gradC = dx / dl
+        grad_c = dx / dl
 
-        # spring forces
-        Fs = -spring.stiffness * C * gradC
+        # spring force
+        Fs = -spring.stiffness * c * grad_c
 
-        # damping forces
-        dot = np.dot(spring.particle1.velocity - spring.particle2.velocity, gradC)
-
-        Fd = -spring.damping * dot * gradC
+        # damping force
+        gradc_wrt_t = np.dot(spring.particle1.velocity - spring.particle2.velocity, grad_c)
+        Fd = -spring.damping * gradc_wrt_t * grad_c
 
         if not spring.particle1.is_fixed:
             spring.particle1.force += Fs + Fd
