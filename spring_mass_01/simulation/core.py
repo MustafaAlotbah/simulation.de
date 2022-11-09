@@ -21,11 +21,12 @@ def apply_symplectic_euler(particle: Particle, dt: float):
 
 # Simulation class
 class Simulation:
-    def __init__(self, dt=0.1):
+    def __init__(self, dt=0.1, callback=None):
         self.particles = []
         self.springs = []
         self.dt = dt
         self.time = 0.0
+        self.callback = callback
 
     def get_stats(self):
         return str(
@@ -55,6 +56,9 @@ class Simulation:
             # apply symplectic Euler's equations for time integration
             apply_symplectic_euler(self.particles[i], self.dt)
 
+        if self.callback:
+            self.callback(self)
+
         self.time += self.dt
 
     #
@@ -76,6 +80,4 @@ class Simulation:
             particle.update_artist()
         for spring in self.springs:
             spring.update_artist()
-
-        print(f"p: {self.particles[1].position}, s.p: {self.springs[0].particle2.position}, {self.springs[0].artist.get_path()}  ")
 

@@ -66,14 +66,13 @@ class Particle:
         self.path_artist.set_path(_path)
 
 
-
 class Spring:
-    def __init__(self, particle1: Particle, particle2: Particle):
+    def __init__(self, particle1: Particle, particle2: Particle, stiffness=6000.0, length=1.0, damping=15):
         self.particle1 = particle1
         self.particle2 = particle2
-        self.rest_length = 1
-        self.stiffness = 6000.0
-        self.damping = 15
+        self.rest_length = length
+        self.stiffness = stiffness
+        self.damping = damping
 
         # what to draw on the plot
         self._path = mpl_patches.Path(
@@ -88,4 +87,3 @@ class Spring:
     def update_artist(self):
         # update the spring itself
         self._path.vertices = np.array([self.particle1.position, self.particle2.position])
-        print([self.particle1.position, self.particle2.position])
