@@ -4,6 +4,7 @@
 """
 
 import numpy as np
+import physics_engine.simulation
 from physics_engine.simulation import Simulation, Particle, Spring
 from physics_engine.visualization import Visualization
 from matplotlib import colors, cm
@@ -11,14 +12,14 @@ from matplotlib import colors, cm
 if __name__ == "__main__":
     print("Simulation starting...")
 
-    sim = Simulation(dt=0.003)
+    sim = Simulation(dt=0.0075, integrator=physics_engine.simulation.INTEGRATOR_LEAPFROG)
 
     # Rocket Simulation Parameters
     engine_mass = 0.02
     rocket_mass = 0.05
-    thrust_force_before_tilt = 9.81 * 0.07          # these forces happen per particle emission
-    thrust_force_after_tilt = 9.81 * 0.17
-    time_to_tilt = 0.6
+    thrust_force_before_tilt = 9.81 * 0.17          # these forces happen per particle emission
+    thrust_force_after_tilt = 9.81 * 0.47
+    time_to_tilt = 0.3
     tilt_duration = 0.1
     tilt_in_degrees = 5
     particle_emission_per_step = 2
@@ -66,12 +67,12 @@ if __name__ == "__main__":
 
     # <editor-fold desc="The ground">
     sim.particles.append(Particle(
-        label="Ground", color="#88bb44", mass=0.1, x=1.0, y=-0.25, has_legend=True, trace_alpha=0.02, radius=0.07, is_fixed=True,
+        label="Ground", color="#88bb44", mass=0.1, x=1.0, y=-0.25, has_legend=True, trace_alpha=0.02, radius=0.07, is_anchored=True,
         display_forces=False
     ))
     sim.particles[-1].apply_earth_gravity = False
     sim.particles.append(Particle(
-        label="", color="#88bb44", mass=0.1, x=-1.0, y=-0.25, has_legend=False, trace_alpha=0.02, radius=0.07, is_fixed=True,
+        label="", color="#88bb44", mass=0.1, x=-1.0, y=-0.25, has_legend=False, trace_alpha=0.02, radius=0.07, is_anchored=True,
         display_forces=False
     ))
     sim.particles[-1].apply_earth_gravity = False
@@ -98,25 +99,34 @@ if __name__ == "__main__":
     # <editor-fold desc="Rocket Simulation Functionality">
     # This is the main particles emitter functionality
     sim.rocket_orientation = 0
+    sim.particles[0].thrust = np.array([0.0, 0.0])
+
+    def forces_callback(state):
+        state.particles[0].forces.append(sim.particles[0].thrust)
+
+    sim.forces_callback = forces_callback
 
     # bring dead particles to live one after another, and make the others older
     def callback(sim):
         # dead particles to life every other step
         particles_step = 0
-        if (sim.time//sim.dt) % particle_emission_per_step < 0.001:
+        if (sim.uptime//sim.dt) % particle_emission_per_step < 0.001:
             for particle in sim.particles[particles_index:]:
                 if particle.age <= 0:
                     # thrust magnitude and orientation
                     thrust_magnitude = thrust_force_before_tilt
-                    if time_to_tilt + tilt_duration <= sim.time:
+                    if time_to_tilt + tilt_duration <= sim.uptime:
                         thrust_magnitude = thrust_force_after_tilt
 
                     theta = sim.rocket_orientation * np.pi / 180
-                    if time_to_tilt <= sim.time <= time_to_tilt + tilt_duration:
+                    if time_to_tilt <= sim.uptime <= time_to_tilt + tilt_duration:
                         theta -= tilt_in_degrees * np.pi / 180
 
                     thrust_y = thrust_magnitude * np.cos(theta)
                     thrust_x = thrust_magnitude * np.sin(theta)
+
+                    # add thrust to the rocket's engine (forces callback handles this)
+                    sim.particles[0].thrust = np.array([thrust_x, thrust_y])
 
                     # emit from the engine's point
                     particle.position = sim.particles[0].position.copy()
@@ -128,9 +138,6 @@ if __name__ == "__main__":
                     particle.age = 1.0
                     sim.particles[-1].apply_earth_gravity = True
                     particles_step += 1
-
-                    # add thrust to the rocket's engine
-                    sim.particles[0].forces.append(np.array([thrust_x, thrust_y]))
 
                 if particles_step >= 2:  # one particle at a time
                     break

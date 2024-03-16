@@ -15,20 +15,19 @@ if __name__ == "__main__":
     # first pendulum --------------------
     # Anchor
     sim.particles.append(Particle(
-        label="Anchor", color="lightgrey", mass=0.5, x=0.0, y=0.0, is_fixed=True
+        label="Anchor", color="lightgrey", mass=0.5, x=0.0, y=0.0, is_anchored=True
     ))
     sim.particles[-1].apply_earth_gravity = False
 
     # -- First Ball
     sim.particles.append(Particle(
-        label="Ball 1", color="#0092cc", mass=0.5, x=-1.5, y=-0.5, vx=0.0, is_fixed=False
+        label="Ball 1", color="#0092cc", mass=0.5, x=-1.5, y=-0.5, vx=0.0, is_anchored=False
     ))
-    sim.springs.append(Spring(sim.particles[0], sim.particles[1]))
-    sim.springs[-1].rest_length = 1.5811388300841898
+    sim.springs.append(Spring(sim.particles[0], sim.particles[1], damping=15.0))
 
     # -- Second Ball
     sim.particles.append(Particle(
-        label="Ball 2", color="#dcd427", mass=0.5, x=-1.5, y=-0.5+1, vx=0.0, is_fixed=False
+        label="Ball 2", color="#dcd427", mass=0.5, x=-1.5, y=-0.5+1, vx=0.0, is_anchored=False
     ))
     sim.springs.append(Spring(sim.particles[1], sim.particles[2]))
 
@@ -37,14 +36,14 @@ if __name__ == "__main__":
     #
     # # -- First Ball
     # sim.particles.append(Particle(
-    #     label="Ball 1\'", color="#ff3333", mass=1.5, x=-1.5, y=-0.5, vx=0.0, is_fixed=False
+    #     label="Ball 1\'", color="#ff3333", mass=1.5, x=-1.5, y=-0.5, vx=0.0, is_anchored=False
     # ))
     # sim.springs.append(Spring(sim.particles[0], sim.particles[3]))
     # sim.springs[-1].rest_length = 1.5811388300841898
     #
     # # -- Second Ball
     # sim.particles.append(Particle(
-    #     label="Ball 2\'", color="#88bb44", mass=0.5, x=-1.5, y=-0.5+1, vx=0.0, is_fixed=False
+    #     label="Ball 2\'", color="#88bb44", mass=0.5, x=-1.5, y=-0.5+1, vx=0.0, is_anchored=False
     # ))
     # sim.springs.append(Spring(sim.particles[3], sim.particles[4]))
 

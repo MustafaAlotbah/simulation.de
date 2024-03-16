@@ -32,11 +32,11 @@ if __name__ == "__main__":
 
     # This is the main particles emitter functionality
     # bring dead particles to live one after another, and make the others older
-    def callback(sim):
+    def callback(sim_state):
         # dead particles to life every half second
         particles_step = 0
-        if (sim.time//sim.dt) % 2 < 0.001:
-            for particle in sim.particles:
+        if (sim_state.uptime//sim_state.dt) % 2 < 0.001:
+            for particle in sim_state.particles:
                 if particle.age <= 0:
                     # The emitter is the third particle
                     particle.position = np.array([0.0, 0.0])
@@ -45,14 +45,14 @@ if __name__ == "__main__":
                     particle.positions = [tuple(particle.position)]
                     particle.alpha = 1.0
                     particle.age = 1.0
-                    sim.particles[-1].apply_earth_gravity = True
+                    sim_state.particles[-1].apply_earth_gravity = True
                     particles_step += 1
 
                 if particles_step >= 2:
                     break
 
         # update the ages and the colors accordingly
-        for particle in sim.particles:
+        for particle in sim_state.particles:
             if particle.age > 0.00:
                 particle.age -= 0.005
                 particle.alpha = min(max(0.0, particle.age), 1.0)
