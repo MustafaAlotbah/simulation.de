@@ -45,6 +45,7 @@ class Particle:
 
         # physical properties
         self.position = np.array([x, y], dtype=np.float)
+        self.prev_position = np.array([x, y], dtype=np.float)
         self.velocity = np.array([vx, vy], dtype=np.float)
         self.forces = []
         self.mass = mass
@@ -280,14 +281,14 @@ class Spring:
 
         if norm_x > 0.001:
             # gradient of the Constraint C:
-            # dC/dX = (X1 - X2) / || X1 - X2) ||
+            # dC/dX = (X1 - X2) / || X1 - X2 ||
             grad_c = x / norm_x
 
             # - Spring force :
             # F_spring = - k . C . dC/dX
             F_spring = -self.stiffness * C * grad_c
 
-            # \dot{C} = (V1 - V2) / (dC/dX)
+            # \dot{C} = (V1 - V2) * (dC/dX)
             gradc_wrt_t = np.dot(self.particle1.velocity - self.particle2.velocity, grad_c)
 
             # - Damping force
@@ -299,3 +300,81 @@ class Spring:
 
             if not self.particle2.is_anchored:
                 self.particle2.forces += [-(F_spring + F_damping)]
+
+
+
+class PositionConstraint:
+    def __init__(self, particle1: Particle, particle2: Particle):
+
+        self.particle1 = particle1
+        self.particle2 = particle2
+
+        self.length = np.linalg.norm(particle1.position - particle2.position)
+
+        self.JMJ = (1 / particle1.mass) + (1 / particle2.mass)
+
+        # what to draw on the plot
+        self._path = mpl_patches.Path(
+            [self.particle1.position, self.particle2.position],
+            [mpl_patches.Path.MOVETO, mpl_patches.Path.LINETO]
+        )
+        self.artist = mpl_patches.PathPatch(path=self._path, ec='white', lw=1.75, fill=False, zorder=8, alpha=1.0)
+
+    def get_artists(self) -> Tuple[mpl_patches.PathPatch,]:
+        """
+        Retrieves the matplotlib artist for the constraint.
+
+        This artist is used to draw the position constraint as a rod in the plot.
+
+        Returns:
+        Tuple[matplotlib.patches.PathPatch]: The path patch representing the constraint.
+        """
+        return self.artist,
+
+    def update_artist(self) -> None:
+        """
+        Updates the constraint's artist based on the current state.
+
+        This method is called to update the visual representation of the constraint,
+        adjusting its position to match the connected particles.
+        """
+        # update the constraint itself
+        self._path.vertices = np.array([self.particle1.position, self.particle2.position])
+
+    def calculate(self) -> Tuple[np.ndarray, float, float]:
+        """
+        Calculates the displacement, distance, and constraint violation for the position constraint.
+
+        Returns:
+        Tuple[numpy.ndarray, float, float]: The displacement vector, its norm, and the constraint violation.
+        """
+        displacement = self.particle1.position - self.particle2.position
+        dl = np.linalg.norm(displacement)
+        C = dl - self.length
+        return displacement, dl, C
+
+    def resolve(self) -> None:
+        """
+        Resolves the position constraint by adjusting the positions of the constrained particles.
+
+        This method calculates the necessary changes to the particle positions based on the current
+        constraint violation and applies these changes to move the particles towards satisfying the constraint.
+        """
+        displacement, dl, C = self.calculate()
+        if dl < 1e-6:  # Avoid division by zero
+            return
+
+        gradC = displacement / dl
+
+        # K stiffness coefficient
+        K = np.dot(gradC, gradC) * self.JMJ
+        if K < 1e-6:
+            return
+
+        lagrange = - C / K
+
+        if not self.particle1.is_anchored:
+            self.particle1.position += lagrange * gradC / self.particle1.mass
+
+        if not self.particle2.is_anchored:
+            self.particle2.position -= lagrange * gradC / self.particle2.mass

@@ -10,7 +10,7 @@ import numpy as np
 from typing import *
 from matplotlib.artist import Artist
 
-from .objects import Particle, Spring
+from .objects import Particle, Spring, PositionConstraint
 from .forces import apply_gravitational_forces
 
 # Various integrator methods available for the simulation
@@ -59,6 +59,7 @@ class SimulationState:
     def __init__(self, dt=0.01, callback: Optional[Callable] = None):
         self.particles: List[Particle] = []
         self.springs: List[Spring] = []
+        self.positionConstraints: List[PositionConstraint] = []
         self.dt: float = dt
         self.uptime = 0.0
 
@@ -289,6 +290,10 @@ class Simulation:
         return self.state.springs
 
     @property
+    def position_constraints(self):
+        return self.state.positionConstraints
+
+    @property
     def dt(self):
         return self.state.dt
 
@@ -315,9 +320,11 @@ class Simulation:
         Returns:
         str: A formatted string containing relevant statistics about the simulation.
         """
+
         return "\n".join([
             f"$t={self.state.uptime:.2f}$",
             f"Energy={self.total_energy():.2f}",
+            f"Violation={self.total_violation():.2f}",
             f"Step Duration={self.last_step_duration * 1000:.0f}ms",
         ]) + ("\n" + self.stats_callback(self) if self.stats_callback else "")
 
@@ -332,6 +339,11 @@ class Simulation:
 
         self.last_time = time.time()
 
+        # save current positions temporarily
+        for particle in self.particles:
+            particle.prev_position = particle.position
+
+        # User defined step callback
         if self.callback:
             self.callback(self)
 
@@ -346,6 +358,17 @@ class Simulation:
             self.state.apply_runge_kutta_2()
         elif self.integrator == INTEGRATOR_RK4:
             self.state.apply_runge_kutta_4()
+
+        # Newton method to resolve constraints (PBD)
+        for i in range(100):
+            for constraint in self.position_constraints:
+                constraint.resolve()
+            if self.total_violation() < 0.01:
+                break
+
+        # Update velocities (PBD)
+        for p in self.particles:
+            p.velocity = (p.position - p.prev_position) / self.dt
 
         current_time = time.time()
         self.last_step_duration = current_time - self.last_time
@@ -370,6 +393,8 @@ class Simulation:
             artists += spring.get_artists()
         for particle in self.particles:
             artists += particle.get_artists()
+        for constraint in self.position_constraints:
+            artists += constraint.get_artists()
         return artists
 
     def get_legend_handles(self) -> List[Artist]:
@@ -399,6 +424,8 @@ class Simulation:
             particle.update_artist()
         for spring in self.springs:
             spring.update_artist()
+        for constraint in self.position_constraints:
+            constraint.update_artist()
 
     def get_force_quivers(self) -> Tuple[List, List, List]:
         """
@@ -446,3 +473,23 @@ class Simulation:
 
         total_energy = total_ke + total_pe_spring + total_pe_gravity
         return total_energy
+
+    def total_violation(self) -> float:
+        """
+        Calculates the total violation of position constraints in the simulation.
+
+        This method computes the total constraint violation by summing up the deviations
+        from the desired lengths of all position constraints in the system. A lower value
+        indicates that the particles are closer to satisfying the position constraints,
+        while a higher value indicates greater deviation from the constraints.
+
+        Returns:
+        float: The sum of the absolute values of the constraint violations in the system.
+        """
+        total = 0.0
+
+        for constraint in self.position_constraints:
+            _, _, C = constraint.calculate()
+            total += abs(C)
+
+        return total
